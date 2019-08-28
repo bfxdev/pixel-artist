@@ -1,2 +1,3 @@
 # pixel-artist
-Create pixel-art from input pictures
+
+Create Pixel Art from input pictures

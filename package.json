@@ -4,18 +4,20 @@
   "description": "Create pixel-art from input pictures",
   "main": "pixel-artist.js",
   "scripts": {
+
+    "start": "npm run build",
+
     "test": "npm run build:lib && mocha -r ts-node/register src/test.ts",
-    "start": "npm run clean && npm run build",
-    "clean": "npm run clean:lib && npm run clean:bundle && npm run clean:test-results",
-    "clean:lib":  "cd lib  && del *.ts && del *.js && del *.map && cd .. ",
-    "clean:bundle": "cd bundle && del *.ts && del *.js && del *.map && cd .. ",
-    "clean:test-results": "cd test-results && del *.png && del *.jpg && cd ..",
-    "build": "npm run build:lib && npm run build:bundle && npm run build:webpack && npm run build:doc",
+
+    "build": "npm run build:lib && npm run build:dist && npm run build:doc",
     "build:lib": "tsc -p .",
-    "build:bundle": "tsc -m es6 --outDir bundle -p .",
+    "build:es6": "tsc -m es6 --outDir es6 -p .",
+    "build:dist": "npm run build:es6 && webpack --config webpack.config.min.js && webpack --config webpack.config.bundle.js",
     "build:doc": "typedoc",
-    "build:webpack": "webpack --config webpack.config.min.js && webpack --config webpack.config.bundle.js",
-    "build:with-pre-clean": "npm run clean && npm run build"
+
+    "clean:lib":  "cd lib && del *.ts && del *.js && del *.map && cd .. && rmdir lib",
+    "clean:es6":  "cd es6 && del *.ts && del *.js && del *.map && cd .. && rmdir es6",
+    "clean:test": "cd test && del *.jpg && del *.png && cd .. && rmdir test"
   },
   "repository": {
     "type": "git",

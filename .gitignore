@@ -3,6 +3,7 @@ node_modules
 package-lock.json
 doc
 lib
-bundle
+es6
+dist
 test
 !*README.md

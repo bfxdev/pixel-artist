@@ -1,4 +1,8 @@
 node_modules
+.vscode
 package-lock.json
 doc
 lib
+bundle
+test
+!*README.md

@@ -4,7 +4,7 @@ import Jimp from 'jimp';
 /**
  * Map of CSS/X11 colors all lowercase and without space character
  */
-export const webColors:{[key: string]: string} = {"aliceblue" : "#F0F8FF", "antiquewhite" : "#FAEBD7",
+const webColors:{[key: string]: string} = {"aliceblue" : "#F0F8FF", "antiquewhite" : "#FAEBD7",
 "aqua" : "#00FFFF", "aquamarine" : "#7FFFD4", "azure" : "#F0FFFF", "beige" : "#F5F5DC", "bisque" : "#FFE4C4",
 "black" : "#000000", "blanchedalmond" : "#FFEBCD", "blue" : "#0000FF", "blueviolet" : "#8A2BE2",
 "brown" : "#A52A2A", "burlywood" : "#DEB887", "cadetblue" : "#5F9EA0", "chartreuse" : "#7FFF00",
@@ -18,7 +18,8 @@ export const webColors:{[key: string]: string} = {"aliceblue" : "#F0F8FF", "anti
 "floralwhite" : "#FFFAF0", "forestgreen" : "#228B22", "fuchsia" : "#FF00FF", "gainsboro" : "#DCDCDC",
 "ghostwhite" : "#F8F8FF", "gold" : "#FFD700", "goldenrod" : "#DAA520", "gray" : "#808080", "green" : "#008000",
 "greenyellow" : "#ADFF2F", "honeydew" : "#F0FFF0", "hotpink" : "#FF69B4", "indianred" : "#CD5C5C",
-"indigo" : "#4B0082", "ivory" : "#FFFFF0", "khaki" : "#F0E68C", "lavender" : "#E6E6FA", "lavenderblush" : "#FFF0F5", "lawngreen" : "#7CFC00", "lemonchiffon" : "#FFFACD",
+"indigo" : "#4B0082", "ivory" : "#FFFFF0", "khaki" : "#F0E68C", "lavender" : "#E6E6FA", "lavenderblush" : "#FFF0F5",
+"lawngreen" : "#7CFC00", "lemonchiffon" : "#FFFACD",
 "lightblue" : "#ADD8E6", "lightcoral" : "#F08080", "lightcyan" : "#E0FFFF", "lightgoldenrodyellow" : "#FAFAD2",
 "lightgreen" : "#90EE90", "lightgrey" : "#D3D3D3", "lightpink" : "#FFB6C1", "lightsalmon" : "#FFA07A",
 "lightseagreen" : "#20B2AA", "lightskyblue" : "#87CEFA", "lightslategray" : "#778899", "lightsteelblue" : "#B0C4DE",
@@ -171,8 +172,6 @@ export class Color
     return this;
   }
 
-
-
   /**
    * Returns a 32-bits integer color computed from the current RGBA values
    * @returns Color as a 32-bits number
@@ -196,12 +195,15 @@ export class Color
   /**
    * Mixes with the given color including Alpha channels
    * @param col Color to mix
+   * @param ratio Mix factor from 0.0 (this color) to 1.0 (color given as argument)
    * @returns This object
    */
-  mix(col:Color):Color
+  mix(col:Color, ratio:number=0.5):Color
   {
-    this.setRGB((this.R+col.R)/2, (this.G+col.G)/2, (this.B+col.B)/2);
-    return this.setAlpha((this.A+col.A)/2);
+    this.setRGB(this.R*(1-ratio)+col.R*ratio,
+                this.G*(1-ratio)+col.G*ratio,
+                this.B*(1-ratio)+col.B*ratio); 
+    return this.setAlpha(this.A*(1-ratio)+col.A*ratio);
   }
 
   /**
@@ -324,8 +326,6 @@ export class Color
     return Math.sqrt( dL*dL + dC/(1+0.045*C1)*dC/(1+0.045*C1) + dH/(1+0.015*C1)*dH/(1+0.015*C1));
   }
 }
-
-
 
 export interface ColorMatch
 {
@@ -452,6 +452,7 @@ export class Palette
           closestDistance = dist;
           closestIndex = index;
           closestColor.set(c);
+          closestColor.setAlpha(color.A);
         }
         index++;
       }
@@ -463,13 +464,14 @@ export class Palette
       index = 0;
       for (let c of Array.from(this.colors.values()))
       {
-        let mixColor:Color = (new Color(closestColor)).mix(c);
-        let dist:number = mixColor.distance(color);
+        let col:Color = (new Color(closestColor)).mix(c);
+        let dist:number = col.distance(color);
         if (dist < mixDistance)
         {
           mixDistance = dist;
           mixIndex = index;
           mixColor.set(c);
+          mixColor.setAlpha(color.A);
         }
         index++;
       }
@@ -637,6 +639,11 @@ class Pixel
   colors:OrientedColor[] = [];
 
   /**
+   * Dithered color
+   */
+  dithered:Color = new Color();
+
+  /**
    * Final color to be exported as Jimp object
    */
   final:Color = new Color();
@@ -649,8 +656,8 @@ class Pixel
   {
     this.original.set(original);
   }
-}
 
+}
 
 export const matrices:{[key: string]: number[][]} = {
   "Bayer2x2": [[1/4, 2/4], [3/4, 0]],
@@ -734,6 +741,11 @@ export class PixelArtist
   protected edge:Frontier = {width:0, colors:[]};
 
   /**
+   * Factor to mix colors of the edge
+   */
+  protected edgeMixRatio:number = 0.5;
+
+  /**
    * Wrap mode for top edge
    */
   protected wrapModeTop:WrapMode = WrapMode.Uniform;
@@ -757,6 +769,12 @@ export class PixelArtist
    * Pixel with uniform color if necessary for the wrap mode, default transparent black
    */
   protected wrapUniformPixel:Pixel = new Pixel(0);
+
+  protected finalScale:number = 1;
+  protected finalBorder:number = 0;
+
+  protected ditheringMatrix:number[][] = [];
+  protected ditheringLevel:number = 0;
 
   /**
    * Initializes object with default value, no allocated work area
@@ -787,30 +805,6 @@ export class PixelArtist
       for (let y=0; y<this.height; y++)
         this.image[x][y] = new Pixel(source.getPixelColor(x, y));
     }
-  }
-
-  /**
-   * Specifies how the pixel just after the edges need to be considered. By default
-   * the source image is considered surrounded by an infinite black transparent
-   * solid color. See [[WrapMode]] for other possibilities.
-   * @param top Wrap mode for top edge
-   * @param right Wrap mode for right edge
-   * @param bottom Wrap mode for bottom edge
-   * @param left Wrap mode for left edge
-   * @param color Color to use if one of the modes is Uniform
-   * @returns The current object
-   */
-  setWrapMode(top:WrapMode   = WrapMode.Uniform, right:WrapMode = WrapMode.Uniform,
-              bottom:WrapMode = WrapMode.Uniform, left:WrapMode = WrapMode.Uniform,
-              color:string|number|Color=0):PixelArtist
-  {
-    // Saves provided parameters
-    this.wrapModeTop = top;
-    this.wrapModeRight = right;
-    this.wrapModeBottom = bottom;
-    this.wrapModeLeft = left;
-    this.wrapUniformPixel = new Pixel(color);
-    return this;
   }
 
   /**
@@ -851,33 +845,6 @@ export class PixelArtist
     return this.image[x][y];
   }
 
-  /*if (x<0 || x>=this.width || y<0 || y>=this.height)
-      switch (this.wrapMode)
-      {
-        case WrapMode.Uniform:
-          return this.wrapUniformPixel;
-
-        case WrapMode.Tiled:
-        {
-          // Adapts positive/negative coordinates using modulo
-          x = ((x % this.width)  + this.width)  % this.width;
-          y = ((y % this.height) + this.height) % this.height;
-          break;
-        }
-
-        case WrapMode.Edge:
-        {
-          // Clamps coordinates
-          x = Math.min(this.width-1, Math.max(0, x));
-          y = Math.min(this.height-1, Math.max(0, y));
-          break;
-        }
-      }
-
-    // Returns color using adapted coordinates
-    //console.log(`x=${x} y=${y}`);
-    return this.image[x][y]; */
-
   /**
    * Calls Palette.getColorMatch on each pixel of the work area (called by render())
    */
@@ -890,29 +857,16 @@ export class PixelArtist
   }
 
   /**
-   * Sets the property and value used for transparency
-   * @param transparency Transparency property given as an alpha threshold from 0 to 1 or a transparent color
-   * @returns This object
+   * Returns true if the given pixel is considered transparent (transparency
+   *  threshold or transparent color)
    */
-  setTransparency(transparency:number|Color = 0.5):PixelArtist
+  protected isTransparent(pixel:Pixel):boolean
   {
-    this.transparency = transparency;
-    return this;
-  }
-
-  /**
-   * Fills the isTransparent fields of the pixel of the work area (called by render())
-   */
-  protected determineTransparency()
-  {
-    // Determines the isTransparent fields to prepare edge/outline detection
-    for (let y=0; y<this.height; y++)
-      for (let x=0; x<this.width; x++)
-        if (typeof(this.transparency) === "number")
-          this.image[x][y].isTransparent = (this.image[x][y].original.A <= 255*(this.transparency as number));
-        else
-          this.image[x][y].isTransparent = Math.floor(this.image[x][y].original.toNumber()/256) ==
-                                           Math.floor((this.transparency as Color).toNumber()/256);
+    if (typeof(this.transparency) === "number")
+      return pixel.original.A <= 255*(this.transparency as number);
+    else
+      return Math.floor(pixel.original.toNumber()/256) ==
+             Math.floor((this.transparency as Color).toNumber()/256);
   }
 
   /**
@@ -940,44 +894,16 @@ export class PixelArtist
     {
       let tr:Color = new Color(top).mix(right), tl:Color = new Color(top).mix(left);
       let br:Color = new Color(bottom).mix(right), bl:Color = new Color(bottom).mix(left);
-      res.concat([{dx: 1, dy:-1, color:tr}, {dx: 1, dy: 1, color:br},
-                  {dx:-1, dy: 1, color:bl}, {dx:-1, dy:-1, color:tl}]);
+      res.push({dx: 1, dy:-1, color:tr});
+      res.push({dx: 1, dy: 1, color:br});
+      res.push({dx:-1, dy: 1, color:bl});
+      res.push({dx:-1, dy:-1, color:tl});
     }
 
     return res;
   }
 
 
-  /**
-   * Sets the outline parameters
-   * @param width Width of the edge in pixels
-   * @param colors Tuple of 4 colors top/right/bottom/left or single color
-   * @param isThick Thicker line if true (8-pixels edge detection instead of 4)
-   * @returns This object
-   */
-  setOutline(width:number=1, colors:number|string|Color|[number|string|Color,number|string|Color,
-             number|string|Color,number|string|Color]=255, isThick:boolean=false):PixelArtist
-  {
-    // Retrieves provided parameters
-    this.outline.width = width;
-    this.outline.colors = this.getOrientedColors(colors, isThick, true);
-    return this;
-  }
-  /**
-   * Sets the outline parameters
-   * @param width Width of the edge in pixels
-   * @param colors Tuple of 4 colors top/right/bottom/left or single color
-   * @param isThick Thicker line if true (8-pixels edge detection instead of 4)
-   * @returns This object
-   */
-  setEdge(width:number=1, colors:number|string|Color|[number|string|Color,number|string|Color,
-    number|string|Color,number|string|Color]=255, isThick:boolean=false):PixelArtist
-  {
-    // Retrieves provided parameters
-    this.edge.width = width;
-    this.edge.colors = this.getOrientedColors(colors, isThick, false);
-    return this;
-  }
 
   /**
    * Retrieves references on Pixel objects surrounding the pixel at given position
@@ -1000,13 +926,10 @@ export class PixelArtist
   protected determineTransparencyFrontiers()
   {
     // Determines the isTransparent fields to prepare edge/outline
+    this.wrapUniformPixel.isTransparent = this.isTransparent(this.wrapUniformPixel);
     for (let y=0; y<this.height; y++)
       for (let x=0; x<this.width; x++)
-        if (typeof(this.transparency) === "number")
-          this.image[x][y].isTransparent = (this.image[x][y].original.A <= 255*(this.transparency as number));
-        else
-          this.image[x][y].isTransparent = Math.floor(this.image[x][y].original.toNumber()/256) ==
-                                           Math.floor((this.transparency as Color).toNumber()/256);
+        this.image[x][y].isTransparent = this.isTransparent(this.image[x][y]);
 
     // Repeat several times the same procedure to generate thick outline/edge
     for (let layer=0; layer<Math.max(this.outline.width,this.edge.width); layer++)
@@ -1043,36 +966,71 @@ export class PixelArtist
         }
 
       // 2nd pass: fills the isOutline/isEdge fields and determine color
+      //console.log(layer);
+      for (let y=0; y<this.height; y++)
+        for (let x=0; x<this.width; x++)
+          if (!this.image[x][y].isEdge && !this.image[x][y].isOutline)
+          {
+            // Sets outline/edge depending on transparency if some colors were kept
+            let p = this.image[x][y];
+            p.isOutline = p.colors.length>0 && p.isTransparent;
+            p.isEdge = p.colors.length>0 && !p.isTransparent;
+
+            // Mixes found oriented colors (without using direction dx,dy)
+            if (p.isOutline || p.isEdge)
+            {
+              let R:number=0, G:number=0, B:number=0, A:number=0;
+              for (let i in p.colors)
+              {
+                R += p.colors[i].color.R; G += p.colors[i].color.G;
+                B += p.colors[i].color.B; A += p.colors[i].color.A;
+              }
+              p.frontier.setRGB(R/p.colors.length, G/p.colors.length, B/p.colors.length);
+              p.frontier.setAlpha(A/p.colors.length);
+            }
+
+            // Mix ratio for edges
+            if (p.isEdge)
+            {
+              let ratio:number = this.edgeMixRatio>=0 && this.edgeMixRatio<=1 ? 1-this.edgeMixRatio :
+                                                                       (1+layer)/(1+this.edge.width);
+              //console.log(ratio);
+              p.frontier.mix(p.original, ratio);
+            }
+
+            // Finally keeps the color in the palette
+            p.frontier.set(this.palette.getClosestColor(p.frontier));
+        }
+    }
+  }
+
+  protected determineDithering()
+  {
+    // Gets height of the dithering matrix
+    let height:number = this.ditheringMatrix.length;
+
+    // Use a simple color replacement if no dithering matrix was set
+    if (this.ditheringMatrix.length===0 || this.ditheringLevel<=0)
+      for (let y=0; y<this.height; y++)
+        for (let x=0; x<this.width; x++)
+          this.image[x][y].dithered.set(this.image[x][y].match.closestColor);
+    else
+    {
+      let width:number = this.ditheringMatrix[0].length;
       for (let y=0; y<this.height; y++)
         for (let x=0; x<this.width; x++)
         {
-          // Sets outline/edge depending on transparency if some colors were kept
-          let p = this.image[x][y];
-          p.isOutline = p.colors.length>0 && p.isTransparent;
-          p.isEdge = p.colors.length>0 && !p.isTransparent;
-          if (p.isOutline || p.isEdge)
-            p.frontier.set(p.colors[0].color);
+          let match:ColorMatch = this.image[x][y].match;
+          let ratio:number = match.mixDistance/match.closestDistance;
+          if ( ratio >= this.ditheringLevel &&
+              this.ditheringMatrix[x % width][y % height] >= ratio-this.ditheringLevel)
+            this.image[x][y].dithered.set(match.mixColor);
+          else
+            this.image[x][y].dithered.set(match.closestColor);
         }
-
-      /*    // 3rd pass: computes outline pixel colors from isEdge fields
-      for (let y=0; y<this.height; y++)
-        for (let x=0; x<this.width; x++)
-          if (this.image[x][y].isEdge && this.image[x][y].isTransparent &&
-             (this.outlineMode==OutlineMode.Outside || this.outlineMode==OutlineMode.Both))
-            // Sets the outline color
-            this.image[x][y].outline = this.palette.getClosestColor(this.outlineColor);
-          else if (this.image[x][y].isEdge && (!this.image[x][y].isTransparent) &&
-                  (this.outlineMode==OutlineMode.Inside || this.outlineMode==OutlineMode.Both))
-          {
-            // Blends the original color and the given outline color according to mix factor
-            let col:Color = new Color(this.image[x][y].original);
-            col.setRGB(col.R*(1-this.outlineMixFactor) + this.outlineColor.R*this.outlineMixFactor,
-                       col.G*(1-this.outlineMixFactor) + this.outlineColor.G*this.outlineMixFactor,
-                       col.B*(1-this.outlineMixFactor) + this.outlineColor.B*this.outlineMixFactor);
-            this.image[x][y].outline = this.palette.getClosestColor(col);
-          } */
     }
   }
+
 
   protected finalize()
   {
@@ -1082,20 +1040,127 @@ export class PixelArtist
         if(this.image[x][y].isOutline || this.image[x][y].isEdge)
           this.image[x][y].final = this.image[x][y].frontier;
         else
-          this.image[x][y].final = this.image[x][y].match.closestColor;
+          this.image[x][y].final = this.image[x][y].dithered;
   }
 
   protected export():Jimp
   {
     // Create output image
-    let res:Jimp = new Jimp(this.width, this.height); 
-    for (let y=0; y<this.height; y++)
-      for (let x=0; x<this.width; x++)
-        res.setPixelColor((this.image[x][y].final as Color).toNumber(), x, y);
+    let res:Jimp = new Jimp((this.width+2*this.finalBorder)*this.finalScale,
+                            (this.height+2*this.finalBorder)*this.finalScale);
+    //console.log("w:"+res.getWidth()+" h:"+res.getHeight()+" b:"+this.finalBorder);
+    for (let y=0; y<res.getHeight(); y++)
+      for (let x=0; x<res.getWidth(); x++)
+      {
+        let pixel:Pixel = this.getPixel(Math.floor(x/this.finalScale)-this.finalBorder,
+                                        Math.floor(y/this.finalScale)-this.finalBorder); 
+        res.setPixelColor(pixel.final.toNumber(), x, y);
+      }
     return res;
   }
 
+  /**
+   * Specifies how the pixel just after the edges need to be considered. By default
+   * the source image is considered surrounded by an infinite black transparent
+   * solid color. See [[WrapMode]] for other possibilities.
+   * @param top Wrap mode for top edge
+   * @param right Wrap mode for right edge
+   * @param bottom Wrap mode for bottom edge
+   * @param left Wrap mode for left edge
+   * @param color Color to use if one of the modes is Uniform
+   * @returns The current object
+   */
+  setWrapMode(top:WrapMode   = WrapMode.Uniform, right:WrapMode = WrapMode.Uniform,
+    bottom:WrapMode = WrapMode.Uniform, left:WrapMode = WrapMode.Uniform,
+    color:string|number|Color=0):PixelArtist
+  {
+    // Saves provided parameters
+    this.wrapModeTop = top;
+    this.wrapModeRight = right;
+    this.wrapModeBottom = bottom;
+    this.wrapModeLeft = left;
+    this.wrapUniformPixel = new Pixel(color);
+    return this;
+  }
 
+  /**
+   * Post-production upscale and borders
+   * @param scale Size of pixels on rendered picture (upscale)
+   * @param border Number of up-scaled pixels to add on borders, colors added according to the
+   *                defined WrapMode (useful to debug).
+   * @returns This object
+   */
+  setFinalFrame(scale:number=1, border:number=0):PixelArtist
+  {
+    this.finalScale = Math.max(1, Math.round(scale));
+    this.finalBorder = Math.max(0, Math.round(border));
+
+    return this;
+  }
+
+  /**
+   * Dithering on some parts of the picture
+   * @param matrix Bayer matrix, e.g. part of the exported global variable [[matrices]]
+   * @param level Fine-tuning level from 0 (no dithering) to 1 (max dithering)
+   */
+  setDithering(matrix:number[][], level:number=0.5)
+  {
+    this.ditheringMatrix = matrix;
+    this.ditheringLevel = level;
+  }
+
+  /**
+   * Sets the outline parameters
+   * @param width Width of the edge in pixels
+   * @param colors Tuple of 4 colors top/right/bottom/left or single color
+   * @param isThick Thicker line if true (8-pixels edge detection instead of 4)
+   * @returns This object
+   */
+  setOutline(width:number=1, colors:number|string|Color|[number|string|Color,number|string|Color,
+             number|string|Color,number|string|Color]=255, isThick:boolean=false):PixelArtist
+  {
+    // Retrieves provided parameters
+    this.outline.width = width;
+    this.outline.colors = this.getOrientedColors(colors, isThick, true);
+    return this;
+  }
+  /**
+   * Sets the edge parameters
+   * @param width Width of the edge in pixels
+   * @param colors Tuple of 4 colors top/right/bottom/left or single color
+   * @param isThick Thicker line if true (8-pixels edge detection instead of 4)
+   * @param mixRatio Mix ratio from 0.0 (original color) to 1.0 (edge color), or shade if
+   *                   negative or greater than 1
+   * @returns This object
+   */
+  setEdge(width:number=1, colors:number|string|Color|[number|string|Color,number|string|Color,
+          number|string|Color,number|string|Color]=255, isThick:boolean=false,
+          mixRatio:number=0.5):PixelArtist
+  {
+    // Retrieves provided parameters
+    this.edge.width = width;
+    this.edgeMixRatio = mixRatio;
+    this.edge.colors = this.getOrientedColors(colors, isThick, false);
+    return this;
+  }
+
+
+  /**
+   * Sets the property and value used for transparency
+   * @param transparency Transparency property given as an alpha threshold from 0 to 1 or a transparent color
+   * @returns This object
+   */
+  setTransparency(transparency:number|Color = 0.5):PixelArtist
+  {
+    this.transparency = transparency;
+    return this;
+  }
+
+  /**
+   * Transforms a picture using the current settings
+   * @param source Input picture read via Jimp
+   * @returns Jimp object with transformed picture
+   */
   render(source:Jimp):Jimp
   {
     // Fills original fields
@@ -1103,6 +1168,7 @@ export class PixelArtist
 
     // Fills closest color(s) in the work array
     this.determineColorMatches();
+    this.determineDithering();
 
     // Fills outline/edge fields and colors
     this.determineTransparencyFrontiers();
@@ -1113,4 +1179,8 @@ export class PixelArtist
     // Creates Jimp object from the final colors
     return this.export();
   }
+
+
+
 }
+

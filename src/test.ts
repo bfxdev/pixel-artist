@@ -1,10 +1,10 @@
 import 'mocha';
 import {expect} from 'chai';
 
-import * as fs from 'fs';
+// import * as fs from 'fs';
 import Jimp from 'jimp';
 
-import {Color, Palette, palettes, WrapMode, PixelArtist} from './pixel-artist';
+import {Color, Palette, palettes, WrapMode, PixelArtist, matrices} from './pixel-artist';
 
 describe("Color constructor", () =>
 {
@@ -61,12 +61,15 @@ describe("Color functions", () =>
 
 
 // Reads test images
-let sprite:Jimp, palette:Jimp, tile:Jimp;
+let duck:Jimp, palette:Jimp, marble:Jimp;
+let apple:Jimp, wood:Jimp;
 async function load()
 {
-  sprite = await Jimp.read("test/sprite.png");
-  palette = await Jimp.read("test/palette.png");
-  tile = await Jimp.read("test/tile.png");
+  duck = await Jimp.read("pics/duck.png");
+  palette = await Jimp.read("pics/palette.png");
+  marble = await Jimp.read("pics/marble.png");
+  apple = await Jimp.read("pics/apple.png");
+  wood = await Jimp.read("pics/wood.jpg");
 } load();
 
 describe("Palette functions", () =>
@@ -109,17 +112,42 @@ describe("Palette functions", () =>
 
 describe("PixelArtist functions", () =>
 {
+  let paletteName = "AAP64";
+  it("Renders pink-background apple with palette " + paletteName, () =>
+  {
+    // console.log(entry[0]);
+    let pa = new PixelArtist(palettes[paletteName]);
+    pa.setTransparency(new Color("#FF00FF"));
+    pa.setOutline(1, "Black", true);
+    pa.setEdge(3, "White", false, -0.5);
+    pa.setDithering(matrices["Bayer8x8"], 0.3);
+    pa.setFinalFrame(4,3);
+    pa.setWrapMode(WrapMode.Uniform, WrapMode.Uniform,
+      WrapMode.Uniform, WrapMode.Uniform, 0xFF00FFFF);
+    let res = pa.render(apple);
+    res.write("test/apple-" + paletteName + ".png");
+    let respal:Palette = new Palette(res);
+    expect(respal.count()).lte(palettes[paletteName].count());
+  });
+});
+
+describe("PixelArtist renders duck with all palettes, edge and outline", () =>
+{
   for (let entry of Object.entries(palettes))
-    it("Render sprite with palette " + entry[0], () =>
+    it("1-pixel black outline, 3-pixels shaded orange edge and palette " + entry[0], () =>
     {
-      {
-        // console.log(entry[0]);
-        let pa = new PixelArtist(entry[1]).setEdge(1, "White", true);
-        let res = pa.render(sprite);
-        res.write("test/sprite-" + entry[0] + "-" + entry[1].count() + ".png");
-        expect(res.getWidth()).to.equal(sprite.getWidth());
-        expect(res.getHeight()).to.equal(sprite.getHeight());
-      }
+      // console.log(entry[0]);
+      let pa = new PixelArtist(entry[1]);
+      pa.setOutline(1, "Black", false);
+      pa.setEdge(3, "Orange", false, -0.5);
+      pa.setFinalFrame(4,0);
+      pa.setDithering(matrices["Bayer4x4"], 0.8);
+      //pa.setWrapMode(WrapMode.Uniform, WrapMode.Uniform, WrapMode.Uniform, WrapMode.Extended);
+      let res = pa.render(duck);
+      res.write("test/duck-" + entry[0] + "-" + entry[1].count() + ".png");
+      let respal:Palette = new Palette(res);
+      expect(respal.count()).lte(entry[1].count());
     });
+
 });
 

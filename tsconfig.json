@@ -64,12 +64,12 @@
     //"resolveJsonModule": true                 /* Include modules imported with '.json' extension */
   },
   
-  "exclude": ["node_modules", "dist", "bundle", "lib", "doc", ".vscode", "pics"],
+  "exclude": ["node_modules", "dist", "es6", "lib", "doc", ".vscode", "pics"],
 
   "typedocOptions": {
     "mode": "modules",
     "out": "doc",
     "excludeNotExported": true,
-    "exclude": "**/*test.ts"
+    "exclude": "**/*test*.ts"
   }
 }

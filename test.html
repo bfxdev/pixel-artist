@@ -1,42 +1,17 @@
 <!DOCTYPE html>
-<html lang="en"> 
-  <head>
-    <meta charset="utf-8">
-    <title>Pixel Artist Test Page</title>
-
-    <!-- <script src="dist/jimp.min.js"></script> -->
-    <script src="dist/pixel-artist.bundle.js"></script>
-
-
-  </head>
+<html lang="en">
+  <head> <script src="dist/pixel-artist.bundle.js"></script> </head>
   <body>
-    
-
-      <h1>Test pixel artist</h1>
-
-      <script>
-
-Jimp.read("pics/apple.png").then(function (img)
+    <script>
+  Jimp.read("pics/duck.png").then(function (img)
   {
-    // Adds duck picture to end of document
-    img.getBase64(Jimp.AUTO, function (err, src)
-    {
-      var elem = document.createElement("img");
-      elem.setAttribute("src", src);
-      document.body.appendChild(elem);
-    });
+    // Processes picture
+    var pa = (new pixart.PixelArtist(pixart.palettes["AAP64"]));
+    pa.setOutline(1, "Black", false);
+    pa.setFinalFrame(2);
+    let res = pa.render(img);
 
     // Adds processed picture to end of document
-    var paletteName = "AAP64";
-    var pa = new pixart.PixelArtist(pixart.palettes[paletteName]);
-    pa.setTransparency(new pixart.Color("#FF00FF"));
-    pa.setOutline(1, "Black", false);
-    pa.setEdge(3, "White", false, -0.5);
-    pa.setDithering(pixart.matrices["Bayer8x8"], 0.79);
-    pa.setFinalFrame(2);
-    pa.setWrapMode(pixart.WrapMode.Uniform, pixart.WrapMode.Uniform,
-    pixart.WrapMode.Uniform, pixart.WrapMode.Uniform, 0xFF00FFFF);
-    let res = pa.render(img);
     res.getBase64(Jimp.AUTO, function (err, src)
     {
       var elem = document.createElement("img");
@@ -44,9 +19,6 @@ Jimp.read("pics/apple.png").then(function (img)
       document.body.appendChild(elem);
     });
   });
-
-      </script>
-
-
+    </script>
   </body>
 </html>

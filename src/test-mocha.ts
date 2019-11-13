@@ -1,7 +1,12 @@
+// File functions in Node,js
+import * as fs from 'fs';
+import * as path from 'path';
+
+// Unit testing packages 
 import 'mocha';
 import {expect} from 'chai';
 
-// import * as fs from 'fs';
+
 import Jimp from 'jimp';
 
 import {Color, Palette, palettes, WrapMode, PixelArtist, matrices} from './pixel-artist';
@@ -62,7 +67,7 @@ describe("Color functions", () =>
 
 // Reads test images
 let duck:Jimp, palette:Jimp, marble:Jimp;
-let apple:Jimp, wood:Jimp;
+let apple:Jimp, wood:Jimp, rgb:Jimp;
 async function load()
 {
   duck = await Jimp.read("pics/duck.png");
@@ -70,6 +75,7 @@ async function load()
   marble = await Jimp.read("pics/marble.png");
   apple = await Jimp.read("pics/apple.png");
   wood = await Jimp.read("pics/wood.jpg");
+  rgb = await Jimp.read("pics/rgb-reference.png");
 } load();
 
 describe("Palette functions", () =>
@@ -131,23 +137,24 @@ describe("PixelArtist functions", () =>
   });
 });
 
-describe("PixelArtist renders duck with all palettes, edge and outline", () =>
+describe("PixelArtist renders RGB reference with all palettes", () =>
 {
+  let text:String = "|Name|#Colors|Example|\n|--|--|--|\n";
   for (let entry of Object.entries(palettes))
-    it("1-pixel black outline, 3-pixels shaded orange edge and palette " + entry[0], () =>
+    it("Color exchange with palette " + entry[0], () =>
     {
-      // console.log(entry[0]);
-      let pa = new PixelArtist(entry[1]);
-      pa.setOutline(1, "Black", false);
-      pa.setEdge(3, "Orange", false, -0.5);
-      pa.setFinalFrame(4,0);
-      pa.setDithering(matrices["Bayer4x4"], 0.8);
-      //pa.setWrapMode(WrapMode.Uniform, WrapMode.Uniform, WrapMode.Uniform, WrapMode.Extended);
-      let res = pa.render(duck);
-      res.write("test/duck-" + entry[0] + "-" + entry[1].count() + ".png");
+      let name = entry[0];
+      let pal = entry[1];
+      let pa = new PixelArtist(pal);
+      let res = pa.render(rgb);
+      res.write("test/rgb-reference-" + name + ".png");
       let respal:Palette = new Palette(res);
-      expect(respal.count()).lte(entry[1].count());
+      expect(respal.count()).lte(pal.count());
+      text += "|" + name + "|" + pal.count() + "|" + "pics/rgb-reference-" + name + ".png|\n";
     });
+
+  fs.writeFile("test/palettes.md", text, (err) =>
+    { if (err) throw err; });
 
 });
 

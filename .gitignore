@@ -1,7 +1,6 @@
 node_modules
 .vscode
 package-lock.json
-doc
 lib
 es6
 dist

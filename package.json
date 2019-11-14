@@ -16,7 +16,7 @@
     "build:lib": "tsc -p .",
     "build:es6": "tsc -m es6 --outDir es6 -p .",
     "build:dist": "npm run build:es6 && webpack --config webpack.config.min.js && webpack --config webpack.config.bundle.js",
-    "build:doc": "typedoc",
+    "build:doc": "typedoc --out doc --mode modules --readme none --theme minimal --includeDeclarations --excludeExternals --excludeNotExported --excludePrivate --excludeProtected src/pixel-artist.ts",
 
     "clean:lib":  "cd lib && del *.ts && del *.js && del *.map && cd .. && rmdir lib",
     "clean:es6":  "cd es6 && del *.ts && del *.js && del *.map && cd .. && rmdir es6",

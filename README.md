@@ -62,7 +62,7 @@ In addition, the thickness of the outline can be set, e.g. 3 pixels on first var
 
 ## API
 
-The complete API of the library is available in [doc](doc). The main classes are:
+The complete API of the library is available in [doc](doc/modules/_pixel_artist_.html). The main classes are:
 
 - [`Color`](doc/classes/_pixel_artist_.color.html): RGBA color in sRGB space with CIELAB distance
 - [`Palette`](doc/classes/_pixel_artist_.palette.html): Palette based on bit depth and/or list of colors

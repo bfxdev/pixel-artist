@@ -1,2 +1,5 @@
 theme: jekyll-theme-midnight
 exclude: doc
+include:
+  - "_*_.html"
+  - "_*_.*.html"

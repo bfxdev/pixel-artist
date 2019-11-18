@@ -1,6 +1,5 @@
 // File functions in Node,js
 import * as fs from 'fs';
-import * as path from 'path';
 
 // Unit testing packages 
 import 'mocha';

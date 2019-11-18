@@ -1,5 +1,7 @@
 
-# :construction: Pixel Artist - ALPHA :construction:
+# Pixel Artist
+
+:construction: ALPHA :construction: ALPHA :construction:
 
 Create Pixel Art from input pictures
 
@@ -8,6 +10,8 @@ Create Pixel Art from input pictures
 The purpose of this Typescript node.js library is to transform pictures by adding a Pixel-Art touch.
 
 The library has only one dependency on [Jimp](https://www.npmjs.com/package/jimp) (used to import/export picture files).
+
+The [GitHub repository](https://github.com/bfxdev/pixel-artist) uses GitHub pages as well to [render it as a web page](https://bfxdev.github.io/pixel-artist).
 
 ## Features
 
@@ -46,6 +50,8 @@ An outline can be added around the non-transparent part of the image according t
 
 The first variant creates a single-pixel outline, including diagonals:
 
+
+
 The outline created by the second variant connects the pixels in diagonal:
 
 
@@ -62,7 +68,7 @@ In addition, the thickness of the outline can be set, e.g. 3 pixels on first var
 
 ## API
 
-The complete API of the library is available in [doc](doc/modules/_pixel_artist_.html). The main classes are:
+The complete API of the library is available in [doc](doc). The main classes are:
 
 - [`Color`](doc/classes/_pixel_artist_.color.html): RGBA color in sRGB space with CIELAB distance
 - [`Palette`](doc/classes/_pixel_artist_.palette.html): Palette based on bit depth and/or list of colors

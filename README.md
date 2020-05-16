@@ -1,7 +1,5 @@
 
-# Pixel Artist
-
-:construction: ALPHA :construction: ALPHA :construction:
+# :construction: Pixel Artist - ALPHA :construction:
 
 Create Pixel Art from input pictures
 
@@ -11,7 +9,7 @@ The purpose of this Typescript node.js library is to transform pictures by addin
 
 The library has only one dependency on [Jimp](https://www.npmjs.com/package/jimp) (used to import/export picture files).
 
-The [GitHub repository](https://github.com/bfxdev/pixel-artist) uses GitHub pages as well to [render it as a web page](https://bfxdev.github.io/pixel-artist).
+Try the [test web page](https://bfxdev.github.io/pixel-artist) hosted through GitHub pages to use the features of Pixel Artist without development.
 
 ## Features
 
@@ -19,7 +17,9 @@ Different operations are available, which can be combined in a single rendering.
 
 ### Arbitrary palettes
 
-All transformations use colors exclusively from an arbitrary palette. The palette can be defined as a list of colors and/or as RGB bit depths. Some **well-known predefined palettes** are available:
+All transformations use colors exclusively from an arbitrary palette. The palette can be defined as a list of colors and/or as RGB bit depths.
+
+Some **well-known predefined palettes** are available:
 
 |Name|#Colors|![Reference picture](pics/rgb-reference.png)|
 |--|--|--|
@@ -43,27 +43,35 @@ All transformations use colors exclusively from an arbitrary palette. The palett
 |Teletext|8|![Example with Teletext](pics/rgb-reference-Teletext.png)|
 |VIC20|16|![Example with VIC20](pics/rgb-reference-VIC20.png)|
 
-
 ### Outline
 
-An outline can be added around the non-transparent part of the image according to 2 variants.
+An outline can be added around the non-transparent part of the image. The outline has a single color and is always drawn on transparent pixels.
 
-The first variant creates a single-pixel outline, including diagonals:
+The outline can be defined according to 2 variants. The first variant creates a single-pixel outline:
 
+![duck-outline-thin](pics/duck-outline-thin.png)
 
+The second variant creates a thicker outline (corner pixels are added in the diagonals):
 
-The outline created by the second variant connects the pixels in diagonal:
+![duck-outline-thick](pics/duck-outline-thick.png)
 
+In addition, the number of layers of such an outline can be set, as  well as the color, e.g. 3 layers on first variant in brown:
 
-
-
-In addition, the thickness of the outline can be set, e.g. 3 pixels on first variant:
-
+![duck-outline-thin-3-pixels](pics/duck-outline-thin-3-pixels.png)
 
 ### Edge
 
+An edge is similar to an outline but it is drawn on the interior, non-transparent pixels:
 
-### Dithering
+![duck-edge-solid](pics/duck-edge-solid.png)
+
+
+
+![duck-edge-solid](pics/duck-edge-shade.png)
+
+
+![duck-edge-solid](pics/duck-edge-shade-AAP64.png)
+
 
 
 ## API
